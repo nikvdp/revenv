@@ -1,0 +1,144 @@
+#!/usr/bin/env bash
+
+abspath() {
+    local to_check="$1"
+    if [[ -d "$to_check" ]]; then
+        echo $( cd "$to_check" && pwd )
+    elif [[ -f "$to_check" ]]; then
+        echo $( cd "$( dirname "$to_check")" && pwd )/$(basename $to_check)
+    fi
+}
+
+launch_zshell() {
+    # zsh doesn't allow directly specifying an rc file, only a dotdir,
+    # so create a temporary dotdir with the right settings and point
+    # zsh at that
+    ZDOTDIR="/tmp/zshdot.$(date +%s)"
+    mkdir -p $ZDOTDIR 2>/dev/null
+    for zfile in "$HOME"/.z*; do
+        cp "$zfile" "$ZDOTDIR"
+    done
+    echo 'export PS1="%{$fg_bold[blue]%}($(basename "$VIRTUAL_ENV")) $PS1"' 2>/dev/null >> "$ZDOTDIR/.zshrc"    
+    echo 'export PS1="%{$fg_bold[blue]%}($(basename "$VIRTUAL_ENV")) $PS1"' 2>/dev/null >> "$ZDOTDIR/.zprofile" 
+    export ZDOTDIR
+    zsh
+    rm -rf "$ZDOTDIR"
+}
+
+launch_bash() {
+    rcfile="/tmp/revenv-bashrc.$(date +%s)"
+    cp "$HOME/.bashrc" "$rcfile"
+    echo 'export PS1="\[\033[01;34m\](\$(basename '$VIRTUAL_ENV')) \e[0m$PS1"' >> $rcfile
+    bash --rcfile "$rcfile"
+    rm "$rcfile"
+}
+
+launch_shell() {
+    if echo $SHELL | grep -q zsh; then
+        launch_zshell
+    elif echo $SHELL | grep -q bash; then
+        launch_bash
+    else
+        $SHELL
+    fi
+}
+
+start_venv() {
+    export VIRTUAL_ENV="$WORKON_HOME/$1"
+    export PATH="$VIRTUAL_ENV/bin:$PATH"
+    unset PYTHON_HOME
+    echo "Starting revenv at [$VIRTUAL_ENV]"
+    launch_shell
+}
+
+new_venv() {
+    local newenv="$WORKON_HOME/$1"
+    virtualenv "$newenv" &&
+    echo "Created virtualenv at: [$newenv]"
+    start_venv "$1"
+}
+
+del_venv() {
+    local target="$WORKON_HOME/$1"
+    local choice
+    read -p "About to delete venv at: ${target}. Sure (y/n)? " choice
+    case "$choice" in 
+        y|yes|Y)
+            rm -rf "$target" && 
+            echo "Deleted venv at [$target]" ||
+                echo "Unable to delete virtualenv at $target"
+            ;;
+    esac
+}
+
+initial_config() {
+    default_storage_dir="$HOME/.local/revenv"
+    read -p "Where should virtualenvs be stored [$default_storage_dir]? " storage_dir
+    [[ -z $storage_dir ]] && storage_dir="$default_storage_dir"
+    echo "export WORKON_HOME=\"$storage_dir\"" > "$HOME/.revenv"
+    export WORKON_HOME="$storage_dir"
+}
+
+ls_venvs() {
+    local startdir="$PWD"
+    cd "$WORKON_HOME"
+    ls
+    cd "$startdir"
+}
+
+usage() {
+    local exename=$(basename $0)
+    local usage="$exename provides a simple wrapper around virtualenv to let you work on your\nvirtualenvs in one place. Functionality is intentionally quite minimal.\n\nUsage: \n    $exename [ setup | workon | ls | new | rm ]\n"
+    echo -e "$usage"
+}
+
+check_deps() {
+    if [[ -z $WORKON_HOME ]]; then
+        read -p "No WORKON_HOME environment variable found. Run initial config? (y/n) " choice
+        case "$choice" in 
+            y|Y|yes)
+                initial_config
+                ;;
+        esac
+    fi
+
+    if ! which virtualenv > /dev/null 2>&1; then
+        echo "$(basename $0) relies on virtualenv -- you can install it with this command: pip install virtualenv"
+        exit 1
+    fi
+}
+
+
+
+if [[ -f "$HOME/.revenv" ]]; then
+    source "$HOME/.revenv" 
+fi
+
+check_deps
+
+
+case "$1" in
+    init|setup|initial-setup)
+        initial_config
+        ;;
+    w|workon|work_on|work-on)
+        shift
+        start_venv $*
+        ;;
+    new)
+        shift
+        new_venv $*
+        ;;
+    rm) 
+        shift
+        del_venv $*
+        ;;
+    ls|list)
+        shift
+        ls_venvs $*
+        ;;
+    *)
+        usage
+        ;;
+esac
+
