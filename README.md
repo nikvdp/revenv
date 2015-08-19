@@ -6,6 +6,17 @@ This is a simple wrapper for virtualenv that follows the approach of the [`inve`
 
 This makes usage easier and reduces a lot of the headache involved with managing virualenvs. Functionality is intentionally quite simple. All you need to use `revenv` is to drop the `revenv` script somewhere on your path, and it will take care of the rest. 
 
+### Installation
+
+If you trust me or are in a hurry just run: 
+
+``` sh
+curl https://raw.githubusercontent.com/nikvdp/revenv/master/revenv > ./revenv && bash ./revenv
+```
+
+Otherwise, clone the repo and run the `revenv` script.
+
+
 ### Features
 
 **Simple and light-weight**. 
@@ -23,7 +34,7 @@ Like `inve` and `pew`, `revenv` starts your virtualenv in a sub-shell rather tha
 
 ### Usage
 
-    revenv [ setup | workon | ls | new | rm ]
+    revenv [ setup | workon | ls | new | rm ] [VENV_NAME]
       
       
     setup		
@@ -33,7 +44,7 @@ Like `inve` and `pew`, `revenv` starts your virtualenv in a sub-shell rather tha
 
     workon [virtualenv name]
 
-        Activate the specificed virtualenv
+        Activate the specified virtualenv
 
     ls
 
