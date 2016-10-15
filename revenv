@@ -61,6 +61,11 @@ new_venv() {
 
 del_venv() {
     check_venv_exists "$1" || exit 1
+    if [[ "$1" == "$(basename $VIRTUAL_ENV)" ]]; then
+        echo "Can't delete virtualenv '$1' since it's the currently active virtualenv!"
+        echo "Please exit this shell and rerun '$(basename $0) rm $1'"
+        exit 1
+    fi
     local target="$WORKON_HOME/$1"
     local choice
     read -p "About to delete venv at: ${target}. Sure (y/n)? " choice
@@ -84,16 +89,22 @@ check_venv_exists() {
 
 initial_config() {
     default_storage_dir="$HOME/.local/revenv"
+    local choice
     read -p "Where should virtualenvs be stored [$default_storage_dir]? " storage_dir
-    [[ -z $storage_dir ]] && storage_dir="$default_storage_dir"
+    if [[ -z $storage_dir ]]; then
+        storage_dir="$default_storage_dir"
+    fi
     echo "export WORKON_HOME=\"$storage_dir\"" > "$HOME/.revenv"
     export WORKON_HOME="$storage_dir"
     mkdir -p "$WORKON_HOME" &> /dev/null
 
     if ! which $(basename $0) &> /dev/null; then
         read -p "$(basename $0) not found in PATH. Copy to /usr/local/bin/$(basename $0)? (y/n) [y] " choice
+        choice="$(echo $choice | tr A-Z a-z)"
         case "$choice" in
-            y|Y|yes)
+            n|no)
+                ;; 
+            *)
                 cp "$0" "/usr/local/bin/$(basename $0)" || (
                     echo "Copy failed, retrying with sudo (please enter sudo pw if prompted)"
                     sudo cp "$0" "/usr/local/bin/$(basename $0)"
@@ -172,25 +183,26 @@ fi
 check_deps
 
 
-case "$1" in
-    initial-config|init|setup|initial-setup)
+cmd="$(echo $1 | tr A-Z a-z)"
+case "$cmd" in
+    setup|initial-config|init|initial-setup)
         initial_config
         ;;
     w|workon|work_on|work-on)
         shift
-        start_venv $*
+        start_venv $@
         ;;
-    new)
+    n|c|new|create)
         shift
-        new_venv $*
+        new_venv $@
         ;;
-    rm)
+    rm|del)
         shift
-        del_venv $*
+        del_venv $@
         ;;
     ls|list)
         shift
-        ls_venvs $*
+        ls_venvs $@
         ;;
     *)
         usage
