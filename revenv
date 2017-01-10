@@ -53,10 +53,12 @@ start_venv() {
 }
 
 new_venv() {
-    local newenv="$WORKON_HOME/$1"
-    virtualenv "$newenv" &&
-    echo "Created virtualenv at: [$newenv]"
-    start_venv "$1"
+    local venv_name=$1
+    shift
+    local newenv="$WORKON_HOME/$venv_name"
+    virtualenv $@ "$newenv" &&
+        echo "Created virtualenv at: [$newenv]"
+    start_venv "$venv_name"
 }
 
 del_venv() {
@@ -143,7 +145,10 @@ ls
     List all virtualenvs in the \$WORKON_HOME directory
 
 new [virtualenv name]
-    Create a new virtualenv with the specified name
+    Create a new virtualenv with the specified name. Supoorts passing args
+    through to virtualenv. E.g. to create a python3 virtualenv:
+
+        revenv new relex3 -p $(which python3)
 
 rm [virtualenv name]
     Deletes specified virtualenv
